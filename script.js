@@ -25,7 +25,7 @@ const SHAPES = {
     I: [[1, 1, 1, 1]],
     O: [[1, 1], [1, 1]],
     T: [[0, 1, 0], [1, 1, 1]],
-    S: [[0, 1, 1], [1, 1, 0]],
+    S: [[0, 1, A1], [1, 1, 0]],
     Z: [[1, 1, 0], [0, 1, 1]],
     J: [[1, 0, 0], [1, 1, 1]],
     L: [[0, 0, 1], [1, 1, 1]]
@@ -291,7 +291,7 @@ function drawNextPiece() {
     if (!nextPieceCtx || !nextPiece) return;
     nextPieceCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
     const shape = nextPiece.shape;
-    const size = 12;
+    const size = 18; // Aumentado de 12
     const offsetX = (nextPieceCanvas.width - shape[0].length * size) / 2;
     const offsetY = (nextPieceCanvas.height - shape.length * size) / 2;
     nextPieceCtx.fillStyle = nextPiece.color;
@@ -490,17 +490,52 @@ window.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') movePiece(0, 1); if (e.key === 'ArrowUp') rotate(); if (e.key === ' ') hardDrop();
 });
 
-let touchInterval = null;
-function startAction(action) { if (isGameOver) return; action(); clearInterval(touchInterval); touchInterval = setInterval(action, 100); }
-function stopAction() { clearInterval(touchInterval); }
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoveX = 0;
+let touchMoveY = 0;
+let touchMoved = false;
 
-document.getElementById('btn-left').addEventListener('touchstart', e => { e.preventDefault(); startAction(() => movePiece(-1, 0)); });
-document.getElementById('btn-left').addEventListener('touchend', stopAction);
-document.getElementById('btn-right').addEventListener('touchstart', e => { e.preventDefault(); startAction(() => movePiece(1, 0)); });
-document.getElementById('btn-right').addEventListener('touchend', stopAction);
-document.getElementById('btn-drop').addEventListener('touchstart', e => { e.preventDefault(); startAction(() => movePiece(0, 1)); });
-document.getElementById('btn-drop').addEventListener('touchend', stopAction);
-document.getElementById('btn-rotate').addEventListener('touchstart', e => { e.preventDefault(); rotate(); });
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchMoved = false;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    touchMoveX = e.touches[0].clientX;
+    touchMoveY = e.touches[0].clientY;
+    touchMoved = true;
+
+    const deltaX = touchMoveX - touchStartX;
+    const deltaY = touchMoveY - touchStartY;
+
+    // Movimento horizontal
+    if (Math.abs(deltaX) > SQ) {
+        movePiece(deltaX > 0 ? 1 : -1, 0);
+        touchStartX = touchMoveX; // Reset para evitar movimentos múltiplos
+    }
+
+    // Soft drop
+    if (deltaY > SQ) {
+        movePiece(0, 1);
+        touchStartY = touchMoveY; // Reset
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    // Se não houve movimento, foi um toque (tap)
+    if (!touchMoved) {
+        // Rotaciona se o toque for na metade direita da tela
+        if (touchStartX > window.innerWidth / 2) {
+            rotate();
+        }
+    }
+}, { passive: false });
+
 document.getElementById('btn-hard-drop').addEventListener('touchstart', e => { e.preventDefault(); hardDrop(); });
 restartButton.addEventListener('click', () => init(true));
 
